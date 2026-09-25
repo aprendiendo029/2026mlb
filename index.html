@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-50 text-slate-900 antialiased selection:bg-blue-500 selection:text-white">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiniela Béisbol MLB 2026 | Temporada Regular y Playoffs</title>
+  <meta name="description" content="Quiniela oficial entre amigos para la MLB 2026 con sincronización en tiempo real vía Google Firebase Firestore.">
+  <meta property="og:title" content="Quiniela Béisbol MLB 2026 | Temporada Regular y Playoffs">
+  <meta property="og:description" content="Quiniela oficial entre amigos para la MLB 2026 con sincronización en tiempo real vía Google Firebase Firestore.">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            denim: {
+              DEFAULT: '#1356aa',
+              50: '#f0f5fc',
+              100: '#e1ebf9',
+              200: '#c3d7f3',
+              300: '#95b7eb',
+              400: '#6192e1',
+              500: '#3b71d7',
+              600: '#1356aa',
+              700: '#11488e',
+              800: '#123d77',
+              900: '#14345f',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Hoja de Estilos Personalizados -->
+  <link rel="stylesheet" href="./css/styles.css">
+
+  <!-- Módulo Principal JavaScript -->
+  <script type="module" src="./app.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-[#f5f5f7] text-[#1d1d1f]">
+
+  <!-- TOP BAR -->
+  <header class="sticky top-0 z-50 apple-glass border-b border-slate-200/80 transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 md:h-20 gap-2">
+        
+        <!-- Brand & Title + Live Status Badge -->
+        <div class="flex items-center space-x-3 shrink-0">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-xl font-bold tracking-tight text-slate-900 leading-tight">
+                Quiniela MLB <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 ml-1">2026</span>
+              </h1>
+              
+              <!-- Cloud Live Sync Badge -->
+              <div id="cloud-status-badge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 border border-amber-400/30">
+                <span id="cloud-status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="cloud-status-text">Conectando Firebase...</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block font-medium">Major League Baseball · Edición 2026</p>
+          </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="flex items-center gap-2 overflow-x-auto scrollbar-none py-1">
+          <div id="leaderboard-container" class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            <!-- Dinámico -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO BANNER SECTION -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2">
+    <div class="relative rounded-3xl overflow-hidden shadow-apple bg-navy border border-slate-200/60 group">
+      <div class="relative w-full">
+        <img 
+          src="img/banner.webp" 
+          alt="Béisbol MLB 2026" 
+          class="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+          onerror="this.src='https://placehold.co/1200x400/0a192f/ffffff?text=MLB+2026+Quiniela'"
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0a192f]/90 via-[#0a192f]/40 to-transparent"></div>
+      </div>
+      
+      <div class="absolute inset-0 p-4 sm:p-6 text-white flex items-end justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-white/15 backdrop-blur-md text-white/80 border border-white/20 tracking-wide uppercase">
+              Temporada Oficial MLB 2026
+            </span>
+          </div>
+          <h2 class="text-lg sm:text-2xl font-extrabold tracking-tight text-white leading-tight mt-1">
+            Cierre de Temporada Regular
+          </h2>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTROL BAR & LEGEND SECTION -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+    
+    <!-- Info Bar: Colors & Scoring Rules -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-apple border border-slate-200/80">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+        
+        <!-- Rules -->
+        <div class="flex flex-col justify-center md:border-r border-slate-200/80 md:pr-4">
+          <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Reglas del Pronóstico Ciego</h3>
+          <p class="text-slate-600 text-xs mt-1 leading-relaxed flex items-center gap-1.5 flex-wrap">
+            <span>Cada participante llena su pizarra individual y presiona</span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[11px]">
+              <svg class="w-3.5 h-3.5 fill-amber-500 drop-shadow-sm" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+              </svg>
+              Guardar
+            </span>
+            <span>. Su pronóstico queda oculto (•••) hasta que los 3 guardan o se cierra por horario.</span>
+          </p>
+        </div>
+
+        <!-- Legend Colors for Validation -->
+        <div class="flex flex-col justify-center md:border-r border-slate-200/80 md:pr-4">
+          <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Validación de Aciertos</h3>
+          <div class="flex items-center space-x-2 mt-1.5">
+            <span class="px-2 py-0.5 rounded bg-emerald-500 text-white font-black text-[11px] shadow-sm">Acierto</span>
+            <span class="text-slate-500 text-xs">Verde (+1 pt)</span>
+            <span class="px-2 py-0.5 rounded bg-red-500 text-white font-black text-[11px] ml-2">Fallo</span>
+            <span class="text-slate-500 text-xs">Rojo (0 pts)</span>
+          </div>
+        </div>
+
+        <!-- Participants Color Themes -->
+        <div class="flex flex-col justify-center">
+          <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider">Participantes</h3>
+          <div class="flex items-center space-x-2 mt-1.5 text-[11px] font-semibold">
+            <span class="px-2 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-300">Gori</span>
+            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">MM</span>
+            <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-300">TM</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- GESTIÓN DE PARTIDOS Y RELOJ AUTOMÁTICO -->
+    <section class="bg-white rounded-2xl p-4 sm:p-6 shadow-apple border border-slate-200/90 transition-all">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        
+        <div>
+          <h3 class="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <span>Gestión de Partidos MLB 2026</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronización Automática
+            </span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">Los encuentros y resultados son actualizados automáticamente vía Google Apps Script.</p>
+        </div>
+
+        <div class="flex items-center gap-3 self-end sm:self-center">
+          <!-- Reloj CDMX -->
+          <div class="bg-indigo-100/80 border border-indigo-200 rounded-xl px-3 py-1.5 text-center min-w-[120px]">
+            <span class="block text-[9px] font-extrabold text-indigo-900 uppercase tracking-wider">CDMX (Local)</span>
+            <span id="clock-cdmx" class="font-mono font-extrabold text-black text-xs sm:text-sm">--:--:--</span>
+          </div>
+
+          <!-- Botón Borrar -->
+          <button 
+            type="button" 
+            onclick="deleteGameFromUI()" 
+            id="btn-delete-game"
+            class="h-[40px] px-5 text-xs sm:text-sm font-black bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-sm hover:shadow transition-all"
+          >
+            Borrar
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Date / Category Filter Buttons -->
+    <div class="flex flex-col gap-3">
+      <div class="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Liga:</span>
+          <div class="flex bg-slate-200/80 p-1 rounded-xl gap-1 shrink-0">
+            <button id="zone-btn-TODOS" onclick="setZoneFilter('TODOS')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all">TODOS</button>
+            <button id="zone-btn-AL" onclick="setZoneFilter('AL')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">Liga Americana</button>
+            <button id="zone-btn-NL" onclick="setZoneFilter('NL')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">Liga Nacional</button>
+          </div>
+        </div>
+
+        <span id="game-count-badge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 border border-blue-200 shrink-0">
+          0 Partidos
+        </span>
+      </div>
+
+      <div id="date-filter-buttons" class="flex items-center space-x-2 overflow-x-auto py-1 scrollbar-none">
+        <!-- Botones dinámicos de fecha -->
+      </div>
+    </div>
+
+    <!-- MAIN GAMES LIST CONTAINER -->
+    <div id="games-container" class="space-y-6">
+      <!-- Partidos cargados dinámicamente -->
+    </div>
+
+  </main>
+
+  <!-- MODAL DE CONFIRMACIÓN DE BORRADO -->
+  <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[999] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-apple border border-slate-200 space-y-4 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center space-x-3 text-red-600">
+        <div class="w-10 h-10 rounded-2xl bg-red-100 flex items-center justify-center font-bold text-lg">⚠️</div>
+        <h3 class="text-lg font-extrabold text-slate-900">¿Borrar partido seleccionado?</h3>
+      </div>
+      <p class="text-sm text-slate-600 leading-relaxed">
+        Esta acción eliminará el encuentro y todos sus pronósticos de manera permanente en Firebase.
+      </p>
+      <div class="flex items-center justify-end space-x-3 pt-2">
+        <button onclick="closeDeleteModal()" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+          Cancelar
+        </button>
+        <button onclick="executeDeleteGame()" type="button" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white shadow-sm transition">
+          Confirmar Borrado
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200/80 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4">
+      <p class="font-medium">Quiniela Béisbol MLB 2026 · Desarrollado para Gori, MM y TM</p>
+      <p class="text-[10px] text-slate-400 mt-1">Sincronización en tiempo real con Google Firebase Firestore</p>
+    </div>
+  </footer>
+
+</body>
+</html>
