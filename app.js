@@ -30,7 +30,6 @@ import {
   getGameCDMXDateStr
 } from "./js/ui/render.js";
 
-// Configuración de tema extendido para Tailwind
 if (window.tailwind) {
   window.tailwind.config = {
     theme: {
@@ -339,7 +338,6 @@ export function renderAll() {
   renderGames(appState, SCHEDULE, window.selectedGameIdToDelete);
 }
 
-// Ventana Global
 window.onStatInputChange = onStatInputChange;
 window.saveParticipantPrediction = saveParticipantPrediction;
 window.deleteGameFromUI = deleteGameFromUI;
