@@ -154,33 +154,44 @@ export function computeOfficialWinner(off) {
   if (isNaN(vR) || isNaN(lR)) return '';
   if (vR > lR) return 'visitor';
   if (lR > vR) return 'local';
-  return ''; // En la MLB no existen empates; si están empatados en carreras aún no hay ganador
+  return '';
 }
 
-export function isGameFinished(game, appState) {
+export function isGameFinished(game, appState = {}) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
   const isFinishedFlag = game.isFinished === true || appState.closedGames?.[game.id]?.isFinished;
-  if (isFinishedFlag || status.includes('FINAL') || status.includes('COMPLETED') || status.includes('GAME OVER')) {
+
+  if (isFinishedFlag || status === 'FINAL' || status.includes('COMPLETED') || status.includes('GAME OVER')) {
     return true;
   }
   return false;
 }
 
-export function isGameStartedOrInProgress(game, appState) {
+export function isGameStartedOrInProgress(game, appState = {}) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
   
-  if (status.includes('PREGAME') || status.includes('SCHEDULED') || status.includes('UPCOMING')) {
+  // Si el partido ya finalizó, no está "en progreso"
+  if (isGameFinished(game, appState)) {
     return false;
   }
 
-  if (status.includes('TOP') || status.includes('BOT') || status.includes('IN PROGRESS') || status.includes('LIVE') || status.includes('WARMUP') || status.includes('1ST') || status.includes('2ND') || status.includes('3RD') || status.includes('INNING')) {
+  // Verificar palabras clave explícitas de estado agendado
+  if (status.includes('PREGAME') || status.includes('PRE-GAME') || status.includes('SCHEDULED') || status.includes('UPCOMING')) {
+    return false;
+  }
+
+  // Verificar palabras clave explícitas de estado en vivo
+  if (status.includes('IN PROGRESS') || status.includes('LIVE') || status.includes('WARMUP') || 
+      status.includes('TOP') || status.includes('BOT') || status.includes('1ST') || 
+      status.includes('2ND') || status.includes('3RD') || status.includes('INNING')) {
     return true;
   }
 
+  // Si no hay status explícito pero la hora límite ya expiró
   const rawTime = game.rawDateTime || game.gameDate;
   if (rawTime) {
     const gameDate = new Date(rawTime);
-    if (!isNaN(gameDate.getTime()) && Date.now() >= gameDate.getTime() && !status.includes('SCHEDULED')) {
+    if (!isNaN(gameDate.getTime()) && Date.now() >= gameDate.getTime()) {
       return true;
     }
   }
@@ -251,7 +262,7 @@ export function calculateParticipantScores(appState, schedule) {
 
       let pPoints = 0;
       
-      // 1. Evaluar variables individuales de Visitante y Local
+      // 1. Evaluar variables individuales
       STAT_VARS.forEach(s => {
         const visPred = userPred['visitor' + s.key];
         const visOff = off['visitor' + s.key];
@@ -266,7 +277,7 @@ export function calculateParticipantScores(appState, schedule) {
         }
       });
 
-      // 2. Evaluar acierto en el equipo Ganador del juego (Punto Ganador de la Pizarra)
+      // 2. Evaluar acierto en el equipo Ganador
       let predWinner = userPred.winner;
       if (!predWinner && userPred.visitorR !== undefined && userPred.localR !== undefined && userPred.visitorR !== '' && userPred.localR !== '') {
         const vR = Number(userPred.visitorR);
