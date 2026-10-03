@@ -170,24 +170,20 @@ export function isGameFinished(game, appState = {}) {
 export function isGameStartedOrInProgress(game, appState = {}) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
   
-  // Si el partido ya finalizó, no está "en progreso"
   if (isGameFinished(game, appState)) {
     return false;
   }
 
-  // Verificar palabras clave explícitas de estado agendado
   if (status.includes('PREGAME') || status.includes('PRE-GAME') || status.includes('SCHEDULED') || status.includes('UPCOMING')) {
     return false;
   }
 
-  // Verificar palabras clave explícitas de estado en vivo
   if (status.includes('IN PROGRESS') || status.includes('LIVE') || status.includes('WARMUP') || 
       status.includes('TOP') || status.includes('BOT') || status.includes('1ST') || 
       status.includes('2ND') || status.includes('3RD') || status.includes('INNING')) {
     return true;
   }
 
-  // Si no hay status explícito pero la hora límite ya expiró
   const rawTime = game.rawDateTime || game.gameDate;
   if (rawTime) {
     const gameDate = new Date(rawTime);
@@ -252,9 +248,13 @@ export function calculateParticipantScores(appState, schedule) {
 
   schedule.forEach(game => {
     const off = appState.official[game.id];
-    if (!off || !isGameFinished(game, appState)) return;
+    if (!off) return;
 
     const offWinner = computeOfficialWinner(off);
+    
+    // Un partido se evalúa para puntaje si está marcado como finalizado o si ya cuenta con carreras capturadas
+    const hasOfficialData = (off.visitorR !== undefined && off.visitorR !== '') || (off.localR !== undefined && off.localR !== '');
+    if (!isGameFinished(game, appState) && !hasOfficialData) return;
 
     PARTICIPANTS.forEach(p => {
       const userPred = (appState.predictions[p.id] || {})[game.id];
@@ -262,7 +262,7 @@ export function calculateParticipantScores(appState, schedule) {
 
       let pPoints = 0;
       
-      // 1. Evaluar variables individuales
+      // 1. Evaluar variables individuales (Visitor & Local para cada variable estadística)
       STAT_VARS.forEach(s => {
         const visPred = userPred['visitor' + s.key];
         const visOff = off['visitor' + s.key];
@@ -514,8 +514,8 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                   disabled
                   class="w-full bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg p-1 cursor-not-allowed"
                 >
-                  <option value="" ${(!isFinished || !offWinner) ? 'selected' : ''}>-- --</option>
-                  ${isFinished && offWinner ? `
+                  <option value="" ${(!offWinner) ? 'selected' : ''}>-- --</option>
+                  ${offWinner ? `
                     <option value="visitor" ${offWinner === 'visitor' ? 'selected' : ''}>[${visTeam.code}]${visTeam.name}</option>
                     <option value="local" ${offWinner === 'local' ? 'selected' : ''}>[${locTeam.code}]${locTeam.name}</option>
                   ` : ''}
@@ -550,7 +550,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
             }
 
             let winnerBg = '';
-            if (isFinished && savedWinner) {
+            if (offWinner && savedWinner) {
               const isWinnerExact = savedWinner === offWinner;
               winnerBg = isWinnerExact ? 'bg-emerald-600/20 text-emerald-950 font-black border-emerald-500/40' : 'bg-red-600/20 text-red-950 font-black border-red-500/40';
             }
@@ -590,10 +590,10 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                             const val = userPred['visitor' + s.key] ?? '';
                             const offVal = off['visitor' + s.key];
                             const hasOfficial = offVal !== undefined && offVal !== '';
-                            const isExact = isFinished && hasOfficial && val !== '' && Number(val) === Number(offVal);
+                            const isExact = hasOfficial && val !== '' && Number(val) === Number(offVal);
 
                             let cellBg = '';
-                            if (isFinished && isRevealed && hasOfficial && val !== '') {
+                            if (isRevealed && hasOfficial && val !== '') {
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             } else if (isParticipantLocked) {
                               cellBg = lockedClass;
@@ -624,10 +624,10 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                             const val = userPred['local' + s.key] ?? '';
                             const offVal = off['local' + s.key];
                             const hasOfficial = offVal !== undefined && offVal !== '';
-                            const isExact = isFinished && hasOfficial && val !== '' && Number(val) === Number(offVal);
+                            const isExact = hasOfficial && val !== '' && Number(val) === Number(offVal);
 
                             let cellBg = '';
-                            if (isFinished && isRevealed && hasOfficial && val !== '') {
+                            if (isRevealed && hasOfficial && val !== '') {
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             } else if (isParticipantLocked) {
                               cellBg = lockedClass;
@@ -662,11 +662,11 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
 
                             const hasOfficialTot = totOff !== null;
                             const hasUserTot = tot !== null;
-                            const isExactTot = isFinished && hasOfficialTot && hasUserTot && tot === totOff;
+                            const isExactTot = hasOfficialTot && hasUserTot && tot === totOff;
 
                             let totBg = isParticipantLocked ? lockedClass : 'text-slate-700';
 
-                            if (isFinished && isRevealed && hasOfficialTot && hasUserTot) {
+                            if (isRevealed && hasOfficialTot && hasUserTot) {
                               totBg = isExactTot ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             }
 
