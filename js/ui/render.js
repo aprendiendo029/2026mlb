@@ -147,11 +147,11 @@ export function calculateTotalSum(visVal, locVal) {
 
 export function computeOfficialWinner(off) {
   if (!off || off.visitorR === undefined || off.localR === undefined || off.visitorR === '' || off.localR === '') {
-    return '';
+    return off?.winner || '';
   }
   const vR = Number(off.visitorR);
   const lR = Number(off.localR);
-  if (isNaN(vR) || isNaN(lR)) return '';
+  if (isNaN(vR) || isNaN(lR)) return off?.winner || '';
   if (vR > lR) return 'visitor';
   if (lR > vR) return 'local';
   return 'tie';
@@ -160,7 +160,9 @@ export function computeOfficialWinner(off) {
 export function isGameFinished(game, appState) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
   const isFinishedFlag = game.isFinished === true || appState.closedGames?.[game.id]?.isFinished;
-  return isFinishedFlag || status.includes('FINAL') || status.includes('COMPLETED');
+  const off = appState.official[game.id];
+  const hasOfficialRuns = off && off.visitorR !== undefined && off.visitorR !== '' && off.localR !== undefined && off.localR !== '';
+  return isFinishedFlag || status.includes('FINAL') || status.includes('COMPLETED') || hasOfficialRuns;
 }
 
 export function isGameStartedOrInProgress(game, appState) {
@@ -232,7 +234,7 @@ export function calculateParticipantScores(appState, schedule) {
 
   schedule.forEach(game => {
     const off = appState.official[game.id];
-    if (!isGameFinished(game, appState) || !off || off.visitorR === undefined || off.localR === undefined || off.visitorR === '' || off.localR === '') return;
+    if (!off || off.visitorR === undefined || off.localR === undefined || off.visitorR === '' || off.localR === '') return;
 
     const offWinner = computeOfficialWinner(off);
 
@@ -241,27 +243,33 @@ export function calculateParticipantScores(appState, schedule) {
       if (!userPred) return;
 
       let pPoints = 0;
+      
+      // 1. Evaluar variables individuales de Visitante y Local
       STAT_VARS.forEach(s => {
-        if (userPred['visitor' + s.key] !== undefined && userPred['visitor' + s.key] !== '' &&
-            Number(userPred['visitor' + s.key]) === Number(off['visitor' + s.key])) {
+        const visPred = userPred['visitor' + s.key];
+        const visOff = off['visitor' + s.key];
+        if (visPred !== undefined && visPred !== '' && visOff !== undefined && visOff !== '' && Number(visPred) === Number(visOff)) {
           pPoints++;
         }
-        if (userPred['local' + s.key] !== undefined && userPred['local' + s.key] !== '' &&
-            Number(userPred['local' + s.key]) === Number(off['local' + s.key])) {
+
+        const locPred = userPred['local' + s.key];
+        const locOff = off['local' + s.key];
+        if (locPred !== undefined && locPred !== '' && locOff !== undefined && locOff !== '' && Number(locPred) === Number(locOff)) {
           pPoints++;
         }
       });
 
+      // 2. Evaluar acierto en el equipo Ganador del juego
       let predWinner = userPred.winner;
       if (!predWinner && userPred.visitorR !== undefined && userPred.localR !== undefined && userPred.visitorR !== '' && userPred.localR !== '') {
         const vR = Number(userPred.visitorR);
         const lR = Number(userPred.localR);
         if (vR > lR) predWinner = 'visitor';
         else if (lR > vR) predWinner = 'local';
-        else predWinner = 'tie';
+        else if (vR === lR) predWinner = 'tie';
       }
 
-      if (offWinner && offWinner !== 'tie' && offWinner === predWinner) {
+      if (offWinner && predWinner && offWinner === predWinner) {
         pPoints++;
       }
 
@@ -397,7 +405,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
             }
           </div>
 
-          <!-- Radio Button con color rojo semitransparente al 20% -->
           <button 
             type="button" 
             onclick="selectGameForDeletion('${game.id}')"
@@ -413,7 +420,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
         <!-- ÁREA DE TRABAJO CON LAS 4 PIZARRAS -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
           
-          <!-- ==================== PIZARRA 1: OFICIAL ==================== -->
+          <!-- PIZARRA 1: OFICIAL -->
           <div class="bg-slate-100/90 rounded-xl p-3 border border-slate-300 flex flex-col justify-between min-h-full space-y-3">
             <div>
               <div class="pb-2 mb-2 border-b border-slate-300 text-center flex items-center justify-between px-1 gap-1">
@@ -434,7 +441,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-200">
-                    <!-- Fila Visitante -->
                     <tr class="bg-slate-50 font-semibold text-slate-800">
                       <td class="py-1 px-1.5 text-left font-sans font-bold flex items-center gap-1">
                         <img src="${visTeam.logo}" class="w-4 h-4 object-contain" onerror="this.style.display='none'"/>
@@ -453,7 +459,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                       `).join('')}
                     </tr>
 
-                    <!-- Fila Local -->
                     <tr class="bg-slate-50 font-semibold text-slate-800">
                       <td class="py-1 px-1.5 text-left font-sans font-bold flex items-center gap-1">
                         <img src="${locTeam.logo}" class="w-4 h-4 object-contain" onerror="this.style.display='none'"/>
@@ -472,7 +477,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                       `).join('')}
                     </tr>
 
-                    <!-- Fila Totales -->
                     <tr class="bg-blue-100/80 font-black text-blue-950">
                       <td class="py-1.5 px-1.5 text-left font-sans text-[10px]">TOT</td>
                       ${STAT_VARS.map(s => {
@@ -486,7 +490,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                 </table>
               </div>
 
-              <!-- Campo Ganador Pizarra Oficial -->
               <div class="mt-2.5 pt-2 border-t border-slate-200">
                 <label class="block text-[10px] font-bold text-slate-600 mb-1">Ganador (Automático):</label>
                 <select 
@@ -504,7 +507,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
               </div>
             </div>
             
-            <!-- Badge dinámico "FINAL" con color charcoal semitransparente al 20% -->
             <div class="flex justify-center items-center pt-1">
               ${isFinished 
                 ? `<span class="px-3 py-1 rounded-full text-[11px] font-black bg-[#36454F]/20 text-slate-900 border border-slate-400/40 tracking-widest shadow-sm">FINAL</span>`
@@ -515,7 +517,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
             </div>
           </div>
 
-          <!-- ==================== PIZARRAS 2, 3 Y 4: PARTICIPANTES ==================== -->
+          <!-- PIZARRAS 2, 3 Y 4: PARTICIPANTES -->
           ${PARTICIPANTS.map(p => {
             const userPred = (appState.predictions[p.id] || {})[game.id] || {};
             const isSaved = appState.savedPredictions?.[game.id]?.[p.id] || false;
@@ -523,35 +525,37 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
             const isParticipantLocked = isSaved || isLocked;
             const canEdit = !isParticipantLocked;
 
-            const savedWinner = userPred.winner || '';
+            let savedWinner = userPred.winner;
+            if (!savedWinner && userPred.visitorR !== undefined && userPred.localR !== undefined && userPred.visitorR !== '' && userPred.localR !== '') {
+              const vR = Number(userPred.visitorR);
+              const lR = Number(userPred.localR);
+              if (vR > lR) savedWinner = 'visitor';
+              else if (lR > vR) savedWinner = 'local';
+              else if (vR === lR) savedWinner = 'tie';
+            }
+
             let winnerBg = '';
-            if (isFinished && savedWinner !== '') {
+            if (isFinished && savedWinner) {
               const isWinnerExact = savedWinner === offWinner;
-              // Acierto y fallo semitransparentes al 20%
               winnerBg = isWinnerExact ? 'bg-emerald-600/20 text-emerald-950 font-black border-emerald-500/40' : 'bg-red-600/20 text-red-950 font-black border-red-500/40';
             }
 
             const lockedClass = isParticipantLocked ? 'bg-[#36454F]/30 text-slate-800 font-bold' : '';
 
-            // Estilos del Badge "Guardado y cerrado" según participante
             let savedBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
             if (p.id === 'mm') {
-              // Subir 20% de opacidad a las variables de color emerald
               savedBadgeClass = 'bg-emerald-200/90 text-emerald-900 border-emerald-400';
             }
 
             return `
-              <!-- Pizarra participante -->
               <div class="${p.bgClass} rounded-xl p-3 border${p.borderClass} flex flex-col justify-between min-h-full space-y-3 transition-all">
                 
                 <div>
-                  <!-- Header Participante -->
                   <div class="flex items-center justify-center space-x-2 pb-2 mb-2 border-b border-slate-200/80">
                     <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${p.themeHex}"></span>
                     <span class="font-black text-xs text-slate-800 font-sans uppercase">${p.name}</span>
                   </div>
 
-                  <!-- Tabla Con Logo y Nemotécnica -->
                   <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                     <table class="w-full text-center border-collapse text-xs font-mono">
                       <thead>
@@ -562,7 +566,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                       </thead>
                       <tbody class="divide-y divide-slate-200">
                         
-                        <!-- Fila Visitante -->
                         <tr class="text-slate-800">
                           <td class="py-1 px-1.5 text-left font-sans font-bold flex items-center gap-1">
                             <img src="${visTeam.logo}" class="w-4 h-4 object-contain" onerror="this.style.display='none'"/>
@@ -576,7 +579,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
 
                             let cellBg = '';
                             if (isFinished && isRevealed && hasOfficial && val !== '') {
-                              // Acierto verde / Fallo rojo semitransparente al 20%
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             } else if (isParticipantLocked) {
                               cellBg = lockedClass;
@@ -598,7 +600,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                           }).join('')}
                         </tr>
 
-                        <!-- Fila Local -->
                         <tr class="text-slate-800">
                           <td class="py-1 px-1.5 text-left font-sans font-bold flex items-center gap-1">
                             <img src="${locTeam.logo}" class="w-4 h-4 object-contain" onerror="this.style.display='none'"/>
@@ -612,7 +613,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
 
                             let cellBg = '';
                             if (isFinished && isRevealed && hasOfficial && val !== '') {
-                              // Acierto verde / Fallo rojo semitransparente al 20%
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             } else if (isParticipantLocked) {
                               cellBg = lockedClass;
@@ -634,7 +634,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                           }).join('')}
                         </tr>
 
-                        <!-- Fila Totales -->
                         <tr class="bg-slate-100 font-bold text-slate-900">
                           <td class="py-1.5 px-1.5 text-left font-sans text-[10px]">TOT</td>
                           ${STAT_VARS.map(s => {
@@ -652,7 +651,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
 
                             let totBg = isParticipantLocked ? lockedClass : 'text-slate-700';
 
-                            // Pintar la línea de sumatoria de totales con acierto/fallo si el juego finalizó y hay datos
                             if (isFinished && isRevealed && hasOfficialTot && hasUserTot) {
                               totBg = isExactTot ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             }
@@ -667,7 +665,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                     </table>
                   </div>
 
-                  <!-- Selector de Ganador del Participante -->
                   <div class="mt-2.5 pt-2 border-t border-slate-200/80">
                     <label class="block text-[10px] font-bold text-slate-600 mb-1">Pronóstico Ganador:</label>
                     ${(!isRevealed && isSaved) ? `
@@ -688,7 +685,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                   </div>
                 </div>
 
-                <!-- Botón de Guardado Centrado en la Parte Inferior -->
                 <div class="flex justify-center items-center pt-1">
                   ${isSaved ? `
                     <span class="px-3 py-1 rounded-full text-[11px] font-extrabold border flex items-center gap-1.5 shadow-sm ${savedBadgeClass}">
@@ -708,7 +704,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                         <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                       </svg>
                       <span>Guardar</span>
-                    </span>
+                    </button>
                   `}
                 </div>
 
