@@ -147,33 +147,40 @@ export function calculateTotalSum(visVal, locVal) {
 
 export function computeOfficialWinner(off) {
   if (!off || off.visitorR === undefined || off.localR === undefined || off.visitorR === '' || off.localR === '') {
-    return off?.winner || '';
+    return off?.winner && off.winner !== 'tie' ? off.winner : '';
   }
   const vR = Number(off.visitorR);
   const lR = Number(off.localR);
-  if (isNaN(vR) || isNaN(lR)) return off?.winner || '';
+  if (isNaN(vR) || isNaN(lR)) return '';
   if (vR > lR) return 'visitor';
   if (lR > vR) return 'local';
-  return 'tie';
+  return ''; // En la MLB no existen empates; si están empatados en carreras aún no hay ganador
 }
 
 export function isGameFinished(game, appState) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
   const isFinishedFlag = game.isFinished === true || appState.closedGames?.[game.id]?.isFinished;
-  const off = appState.official[game.id];
-  const hasOfficialRuns = off && off.visitorR !== undefined && off.visitorR !== '' && off.localR !== undefined && off.localR !== '';
-  return isFinishedFlag || status.includes('FINAL') || status.includes('COMPLETED') || hasOfficialRuns;
+  if (isFinishedFlag || status.includes('FINAL') || status.includes('COMPLETED') || status.includes('GAME OVER')) {
+    return true;
+  }
+  return false;
 }
 
 export function isGameStartedOrInProgress(game, appState) {
   const status = String(game.status || game.gameStatus || game.detailedState || '').toUpperCase();
-  if (status.includes('TOP') || status.includes('BOT') || status.includes('IN PROGRESS') || status.includes('LIVE') || status.includes('WARMUP') || status.includes('1ST') || status.includes('2ND') || status.includes('3RD')) {
+  
+  if (status.includes('PREGAME') || status.includes('SCHEDULED') || status.includes('UPCOMING')) {
+    return false;
+  }
+
+  if (status.includes('TOP') || status.includes('BOT') || status.includes('IN PROGRESS') || status.includes('LIVE') || status.includes('WARMUP') || status.includes('1ST') || status.includes('2ND') || status.includes('3RD') || status.includes('INNING')) {
     return true;
   }
+
   const rawTime = game.rawDateTime || game.gameDate;
   if (rawTime) {
     const gameDate = new Date(rawTime);
-    if (!isNaN(gameDate.getTime()) && Date.now() >= gameDate.getTime()) {
+    if (!isNaN(gameDate.getTime()) && Date.now() >= gameDate.getTime() && !status.includes('SCHEDULED')) {
       return true;
     }
   }
@@ -234,7 +241,7 @@ export function calculateParticipantScores(appState, schedule) {
 
   schedule.forEach(game => {
     const off = appState.official[game.id];
-    if (!off || off.visitorR === undefined || off.localR === undefined || off.visitorR === '' || off.localR === '') return;
+    if (!off || !isGameFinished(game, appState)) return;
 
     const offWinner = computeOfficialWinner(off);
 
@@ -259,14 +266,13 @@ export function calculateParticipantScores(appState, schedule) {
         }
       });
 
-      // 2. Evaluar acierto en el equipo Ganador del juego
+      // 2. Evaluar acierto en el equipo Ganador del juego (Punto Ganador de la Pizarra)
       let predWinner = userPred.winner;
       if (!predWinner && userPred.visitorR !== undefined && userPred.localR !== undefined && userPred.visitorR !== '' && userPred.localR !== '') {
         const vR = Number(userPred.visitorR);
         const lR = Number(userPred.localR);
         if (vR > lR) predWinner = 'visitor';
         else if (lR > vR) predWinner = 'local';
-        else if (vR === lR) predWinner = 'tie';
       }
 
       if (offWinner && predWinner && offWinner === predWinner) {
@@ -498,10 +504,9 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                   class="w-full bg-slate-100 border border-slate-300 text-slate-800 text-[11px] font-bold rounded-lg p-1 cursor-not-allowed"
                 >
                   <option value="" ${(!isFinished || !offWinner) ? 'selected' : ''}>-- --</option>
-                  ${isFinished ? `
+                  ${isFinished && offWinner ? `
                     <option value="visitor" ${offWinner === 'visitor' ? 'selected' : ''}>[${visTeam.code}]${visTeam.name}</option>
                     <option value="local" ${offWinner === 'local' ? 'selected' : ''}>[${locTeam.code}]${locTeam.name}</option>
-                    <option value="tie" ${offWinner === 'tie' ? 'selected' : ''}>Empate</option>
                   ` : ''}
                 </select>
               </div>
@@ -531,7 +536,6 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
               const lR = Number(userPred.localR);
               if (vR > lR) savedWinner = 'visitor';
               else if (lR > vR) savedWinner = 'local';
-              else if (vR === lR) savedWinner = 'tie';
             }
 
             let winnerBg = '';
