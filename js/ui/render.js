@@ -252,9 +252,8 @@ export function calculateParticipantScores(appState, schedule) {
 
     const offWinner = computeOfficialWinner(off);
     
-    // Un partido se evalúa para puntaje si está marcado como finalizado o si ya cuenta con carreras capturadas
-    const hasOfficialData = (off.visitorR !== undefined && off.visitorR !== '') || (off.localR !== undefined && off.localR !== '');
-    if (!isGameFinished(game, appState) && !hasOfficialData) return;
+    // Un partido se evalúa para puntaje únicamente cuando el estatus es FINAL
+    if (!isGameFinished(game, appState)) return;
 
     PARTICIPANTS.forEach(p => {
       const userPred = (appState.predictions[p.id] || {})[game.id];
@@ -275,9 +274,16 @@ export function calculateParticipantScores(appState, schedule) {
         if (locPred !== undefined && locPred !== '' && locOff !== undefined && locOff !== '' && Number(locPred) === Number(locOff)) {
           pPoints++;
         }
+
+        // 2. Evaluar acierto en el TOTAL combinado por juego
+        const userTot = calculateTotalSum(visPred, userPred['local' + s.key]);
+        const offTot = calculateTotalSum(visOff, locOff);
+        if (userTot !== null && offTot !== null && userTot === offTot) {
+          pPoints++;
+        }
       });
 
-      // 2. Evaluar acierto en el equipo Ganador
+      // 3. Evaluar acierto en el equipo Ganador
       let predWinner = userPred.winner;
       if (!predWinner && userPred.visitorR !== undefined && userPred.localR !== undefined && userPred.visitorR !== '' && userPred.localR !== '') {
         const vR = Number(userPred.visitorR);
@@ -550,12 +556,13 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
             }
 
             let winnerBg = '';
-            if (offWinner && savedWinner) {
+            if (isFinished && offWinner && savedWinner) {
               const isWinnerExact = savedWinner === offWinner;
               winnerBg = isWinnerExact ? 'bg-emerald-600/20 text-emerald-950 font-black border-emerald-500/40' : 'bg-red-600/20 text-red-950 font-black border-red-500/40';
             }
 
-            const lockedClass = isParticipantLocked ? 'bg-[#36454F]/30 text-slate-800 font-bold' : '';
+            const grayLockedClass = 'bg-slate-400/30 text-slate-800 font-bold';
+            const lockedClass = isStartedOrInProgress ? grayLockedClass : (isParticipantLocked ? grayLockedClass : '');
 
             let savedBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
             if (p.id === 'mm') {
@@ -593,10 +600,12 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                             const isExact = hasOfficial && val !== '' && Number(val) === Number(offVal);
 
                             let cellBg = '';
-                            if (isRevealed && hasOfficial && val !== '') {
+                            if (isFinished && isRevealed && hasOfficial && val !== '') {
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
+                            } else if (isStartedOrInProgress) {
+                              cellBg = grayLockedClass;
                             } else if (isParticipantLocked) {
-                              cellBg = lockedClass;
+                              cellBg = grayLockedClass;
                             }
 
                             const displayVal = (!isRevealed && isSaved) ? '•••' : (val !== '' ? val : '-');
@@ -627,10 +636,12 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                             const isExact = hasOfficial && val !== '' && Number(val) === Number(offVal);
 
                             let cellBg = '';
-                            if (isRevealed && hasOfficial && val !== '') {
+                            if (isFinished && isRevealed && hasOfficial && val !== '') {
                               cellBg = isExact ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
+                            } else if (isStartedOrInProgress) {
+                              cellBg = grayLockedClass;
                             } else if (isParticipantLocked) {
-                              cellBg = lockedClass;
+                              cellBg = grayLockedClass;
                             }
 
                             const displayVal = (!isRevealed && isSaved) ? '•••' : (val !== '' ? val : '-');
@@ -664,9 +675,9 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                             const hasUserTot = tot !== null;
                             const isExactTot = hasOfficialTot && hasUserTot && tot === totOff;
 
-                            let totBg = isParticipantLocked ? lockedClass : 'text-slate-700';
+                            let totBg = isStartedOrInProgress ? grayLockedClass : (isParticipantLocked ? grayLockedClass : 'text-slate-700');
 
-                            if (isRevealed && hasOfficialTot && hasUserTot) {
+                            if (isFinished && isRevealed && hasOfficialTot && hasUserTot) {
                               totBg = isExactTot ? 'bg-emerald-600/20 text-emerald-950 font-black' : 'bg-red-600/20 text-red-950 font-black';
                             }
 
@@ -683,12 +694,12 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                   <div class="mt-2.5 pt-2 border-t border-slate-200/80">
                     <label class="block text-[10px] font-bold text-slate-600 mb-1">Pronóstico Ganador:</label>
                     ${(!isRevealed && isSaved) ? `
-                      <div class="w-full ${lockedClass ? lockedClass : 'bg-slate-200 text-slate-500'} text-[11px] font-bold rounded-lg p-1 text-center select-none">
+                      <div class="w-full ${grayLockedClass} text-[11px] font-bold rounded-lg p-1 text-center select-none">
                         ••••••••••••
                       </div>
                     ` : `
                       <select 
-                        class="w-full border text-[11px] font-bold rounded-lg p-1 focus:ring-1 focus:ring-blue-500 disabled:opacity-100 ${winnerBg ? winnerBg : isParticipantLocked ? lockedClass + ' border-transparent' : 'bg-white border-slate-300 text-slate-800'}"
+                        class="w-full border text-[11px] font-bold rounded-lg p-1 focus:ring-1 focus:ring-blue-500 disabled:opacity-100 ${winnerBg ? winnerBg : isStartedOrInProgress || isParticipantLocked ? grayLockedClass + ' border-transparent' : 'bg-white border-slate-300 text-slate-800'}"
                         ${!canEdit ? 'disabled' : ''}
                         onchange="onStatInputChange('${game.id}', '${p.id}', 'winner', this.value)"
                       >
