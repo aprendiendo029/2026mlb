@@ -555,14 +555,15 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
               else if (lR > vR) savedWinner = 'local';
             }
 
+            const grayLockedClass = 'bg-slate-400/30 text-slate-800 font-bold';
+
             let winnerBg = '';
             if (isFinished && offWinner && savedWinner) {
               const isWinnerExact = savedWinner === offWinner;
               winnerBg = isWinnerExact ? 'bg-emerald-600/20 text-emerald-950 font-black border-emerald-500/40' : 'bg-red-600/20 text-red-950 font-black border-red-500/40';
+            } else if (isStartedOrInProgress) {
+              winnerBg = grayLockedClass + ' border-transparent';
             }
-
-            const grayLockedClass = 'bg-slate-400/30 text-slate-800 font-bold';
-            const lockedClass = isStartedOrInProgress ? grayLockedClass : (isParticipantLocked ? grayLockedClass : '');
 
             let savedBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
             if (p.id === 'mm') {
@@ -699,7 +700,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                       </div>
                     ` : `
                       <select 
-                        class="w-full border text-[11px] font-bold rounded-lg p-1 focus:ring-1 focus:ring-blue-500 disabled:opacity-100 ${winnerBg ? winnerBg : isStartedOrInProgress || isParticipantLocked ? grayLockedClass + ' border-transparent' : 'bg-white border-slate-300 text-slate-800'}"
+                        class="w-full border text-[11px] font-bold rounded-lg p-1 focus:ring-1 focus:ring-blue-500 disabled:opacity-100 ${winnerBg ? winnerBg : isParticipantLocked ? grayLockedClass + ' border-transparent' : 'bg-white border-slate-300 text-slate-800'}"
                         ${!canEdit ? 'disabled' : ''}
                         onchange="onStatInputChange('${game.id}', '${p.id}', 'winner', this.value)"
                       >
@@ -727,7 +728,7 @@ export function renderGames(appState, schedule, selectedGameIdToDelete) {
                       class="w-full sm:w-auto px-4 py-1.5 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition disabled:opacity-50 flex items-center justify-center gap-1.5"
                     >
                       <svg class="w-3.5 h-3.5 fill-amber-400" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
                       </svg>
                       <span>Guardar</span>
                     </button>
